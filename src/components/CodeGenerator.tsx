@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Code, Save, Folder } from 'lucide-react';
+import { Code, Save, Folder, Loader2 } from 'lucide-react';
 
 const CodeGenerator = () => {
   const { user } = useAuth();
@@ -20,6 +20,7 @@ const CodeGenerator = () => {
   const [title, setTitle] = useState('');
   const [folderName, setFolderName] = useState('Default');
   const [generatedCode, setGeneratedCode] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Fetch saved codes
   const { data: savedCodes, isLoading } = useQuery({
@@ -78,7 +79,7 @@ const CodeGenerator = () => {
     },
   });
 
-  const generateCode = () => {
+  const generateCode = async () => {
     if (!prompt.trim()) {
       toast({
         title: "Error",
@@ -88,25 +89,41 @@ const CodeGenerator = () => {
       return;
     }
 
-    // Simulate code generation (in real app, this would call an AI API)
-    const mockGeneratedCode = `// Generated code for: ${prompt}
-function ${prompt.replace(/\s+/g, '')}() {
-  console.log("This is generated code based on your prompt:");
-  console.log("${prompt}");
-  
-  // Add your implementation here
-  return "Hello from Smart Verse!";
-}
-
-// Example usage
-${prompt.replace(/\s+/g, '')}();`;
-
-    setGeneratedCode(mockGeneratedCode);
+    setIsGenerating(true);
     
-    toast({
-      title: "Code Generated!",
-      description: "Your code has been generated successfully.",
-    });
+    try {
+      console.log('Calling generate-code function with prompt:', prompt);
+      
+      const { data, error } = await supabase.functions.invoke('generate-code', {
+        body: { prompt }
+      });
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
+
+      console.log('Generated code received:', data);
+      
+      if (data && data.generatedCode) {
+        setGeneratedCode(data.generatedCode);
+        toast({
+          title: "Code Generated!",
+          description: "Your code has been generated successfully using AI.",
+        });
+      } else {
+        throw new Error('No code generated');
+      }
+    } catch (error: any) {
+      console.error('Error generating code:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate code. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleSaveCode = () => {
@@ -135,10 +152,10 @@ ${prompt.replace(/\s+/g, '')}();`;
           <CardHeader className="bg-gradient-to-r from-purple-500 to-blue-500 text-white">
             <CardTitle className="flex items-center">
               <Code className="w-5 h-5 mr-2" />
-              Code Generator
+              AI Code Generator
             </CardTitle>
             <CardDescription className="text-purple-100">
-              Enter your prompt to generate custom code
+              Enter your prompt to generate custom code using AI
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-4">
@@ -166,7 +183,7 @@ ${prompt.replace(/\s+/g, '')}();`;
               <Label htmlFor="prompt">Code Prompt</Label>
               <Textarea
                 id="prompt"
-                placeholder="Describe what you want the code to do..."
+                placeholder="Describe what you want the code to do... (e.g., 'Create a function to validate email addresses', 'Build a React component for a user profile card')"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 rows={4}
@@ -175,9 +192,17 @@ ${prompt.replace(/\s+/g, '')}();`;
             
             <Button 
               onClick={generateCode}
+              disabled={isGenerating}
               className="w-full bg-purple-600 hover:bg-purple-700"
             >
-              Generate Code
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating Code...
+                </>
+              ) : (
+                'Generate Code with AI'
+              )}
             </Button>
             
             {generatedCode && (
@@ -186,7 +211,7 @@ ${prompt.replace(/\s+/g, '')}();`;
                 <Textarea
                   value={generatedCode}
                   onChange={(e) => setGeneratedCode(e.target.value)}
-                  rows={10}
+                  rows={12}
                   className="font-mono text-sm"
                 />
                 <Button 
