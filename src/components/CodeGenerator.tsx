@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Code, Save, Folder, Loader2 } from 'lucide-react';
+import { Code, Save, Folder, Loader2, Download, File } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 const CodeGenerator = () => {
   const { user } = useAuth();
@@ -21,6 +21,7 @@ const CodeGenerator = () => {
   const [folderName, setFolderName] = useState('Default');
   const [generatedCode, setGeneratedCode] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [selectedCode, setSelectedCode] = useState<any>(null);
 
   // Fetch saved codes
   const { data: savedCodes, isLoading } = useQuery({
@@ -144,6 +145,21 @@ const CodeGenerator = () => {
     });
   };
 
+  const downloadCode = (code: any) => {
+    const element = document.createElement('a');
+    const file = new Blob([code.generated_code], { type: 'text/plain' });
+    element.href = URL.createObjectURL(file);
+    element.download = `${code.title.replace(/\s+/g, '_')}.txt`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+    
+    toast({
+      title: "Downloaded!",
+      description: `${code.title} has been downloaded.`,
+    });
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -256,9 +272,53 @@ const CodeGenerator = () => {
                       <pre className="bg-gray-100 p-2 rounded text-xs overflow-x-auto">
                         {code.generated_code.substring(0, 150)}...
                       </pre>
-                      <p className="text-xs text-gray-500 mt-2">
-                        Created: {new Date(code.created_at).toLocaleDateString()}
-                      </p>
+                      <div className="flex justify-between items-center mt-3">
+                        <p className="text-xs text-gray-500">
+                          Created: {new Date(code.created_at).toLocaleDateString()}
+                        </p>
+                        <div className="flex space-x-2">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => setSelectedCode(code)}
+                              >
+                                <File className="w-3 h-3 mr-1" />
+                                View
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+                              <DialogHeader>
+                                <DialogTitle>{selectedCode?.title}</DialogTitle>
+                                <DialogDescription>
+                                  Folder: {selectedCode?.folder_name} | Created: {selectedCode?.created_at ? new Date(selectedCode.created_at).toLocaleDateString() : ''}
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="mt-4">
+                                <Label>Prompt:</Label>
+                                <p className="text-sm text-gray-600 mb-4 p-2 bg-gray-50 rounded">
+                                  {selectedCode?.prompt}
+                                </p>
+                                <Label>Generated Code:</Label>
+                                <div className="mt-2 max-h-96 overflow-y-auto">
+                                  <pre className="bg-gray-900 text-green-400 p-4 rounded text-sm whitespace-pre-wrap">
+                                    {selectedCode?.generated_code}
+                                  </pre>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => downloadCode(code)}
+                          >
+                            <Download className="w-3 h-3 mr-1" />
+                            Download
+                          </Button>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
