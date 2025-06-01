@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import Header from '@/components/Header';
 import AuthForm from '@/components/AuthForm';
 import CodeGenerator from '@/components/CodeGenerator';
+import Chatbot from '@/components/Chatbot';
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -25,7 +26,10 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
       <Header />
-      <CodeGenerator />
+      <div className="container mx-auto p-6 space-y-8">
+        <Chatbot />
+        <CodeGenerator />
+      </div>
     </div>
   );
 };
